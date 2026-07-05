@@ -102,11 +102,11 @@ class BloodViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- Auth Management ---
-    fun login(email: String, phone: String, method: String) {
+    fun login(email: String, password: String, phone: String, method: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 if (email.isNotEmpty()) {
-                    auth.signInWithEmailAndPassword(email, "password123").await()
+                    auth.signInWithEmailAndPassword(email, password.ifEmpty { "password123" }).await()
                 }
                 
                 _isLoggedIn.value = true
@@ -127,11 +127,11 @@ class BloodViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun register(name: String, email: String, phone: String, bloodType: String, location: String, age: Int, gender: String) {
+    fun register(name: String, email: String, password: String, phone: String, bloodType: String, location: String, age: Int, gender: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 if (email.isNotEmpty()) {
-                    auth.createUserWithEmailAndPassword(email, "password123").await()
+                    auth.createUserWithEmailAndPassword(email, password.ifEmpty { "password123" }).await()
                 }
 
                 val profile = UserProfile(

@@ -48,6 +48,7 @@ fun LoginScreen(viewModel: BloodViewModel) {
     // Signup form states
     var regName by remember { mutableStateOf("") }
     var regEmail by remember { mutableStateOf("") }
+    var regPassword by remember { mutableStateOf("") }
     var regPhone by remember { mutableStateOf("") }
     var regBloodType by remember { mutableStateOf("O+") }
     var regLocation by remember { mutableStateOf("") }
@@ -185,6 +186,7 @@ fun LoginScreen(viewModel: BloodViewModel) {
                             onClick = {
                                 viewModel.login(
                                     email = loginEmail.ifEmpty { "ronymia2021@gmail.com" },
+                                    password = loginPassword.ifEmpty { "password123" },
                                     phone = "",
                                     method = "Email Credentials"
                                 )
@@ -283,6 +285,17 @@ fun LoginScreen(viewModel: BloodViewModel) {
                         label = { Text("Email Address") },
                         leadingIcon = { Icon(Icons.Default.Email, "Email Icon") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = regPassword,
+                        onValueChange = { regPassword = it },
+                        label = { Text("Password") },
+                        leadingIcon = { Icon(Icons.Default.Lock, "Lock Icon") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -392,6 +405,7 @@ fun LoginScreen(viewModel: BloodViewModel) {
                             viewModel.register(
                                 name = regName.ifEmpty { "Rony Mia" },
                                 email = regEmail.ifEmpty { "ronymia2021@gmail.com" },
+                                password = regPassword.ifEmpty { "password123" },
                                 phone = regPhone.ifEmpty { "+880 1712-345678" },
                                 bloodType = regBloodType,
                                 location = regLocation.ifEmpty { "Mirpur, Dhaka" },
