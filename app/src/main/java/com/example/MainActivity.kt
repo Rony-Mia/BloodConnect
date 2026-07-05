@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 var showUpdateDialog by remember { mutableStateOf(false) }
                 var updateUrl by remember { mutableStateOf("") }
-                val currentVersion = 104 // Increment this to match the latest tag (e.g., v1.0.4)
+                val currentVersion = 105 // This matches versionCode in build.gradle
 
                 LaunchedEffect(Unit) {
                     try {
@@ -62,11 +62,14 @@ class MainActivity : ComponentActivity() {
                             val response = URL("https://api.github.com/repos/Rony-Mia/BloodConnect/releases/latest").readText()
                             val json = JSONObject(response)
                             val latestTagName = json.getString("tag_name")
-                            // Assuming tags are like v1, v2 or v1.0, v2.0
+                            // Extracts numbers only: v1.0.5 -> 105
                             val latestVersion = latestTagName.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
+                            
                             if (latestVersion > currentVersion) {
                                 updateUrl = json.getString("html_url")
-                                showUpdateDialog = true
+                                withContext(Dispatchers.Main) {
+                                    showUpdateDialog = true
+                                }
                             }
                         }
                     } catch (e: Exception) {

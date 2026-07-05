@@ -23,10 +23,15 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Create Dummy google-services.json
+      - name: Decode Google Services JSON
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          if [ ! -f app/google-services.json ]; then
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "Warning: GOOGLE_SERVICES_JSON secret is not set. Using dummy file."
             echo '{"project_info":{"project_number":"12345","project_id":"dummy"},"client":[{"client_info":{"mobilesdk_app_id":"1:12345:android:12345","android_client_info":{"package_name":"com.aistudio.bloodconnect.qkxvmb"}},"api_key":[{"current_key":"dummy"}]}]}' > app/google-services.json
+          else
+            echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
           fi
 
       - name: Create empty .env file

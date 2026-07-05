@@ -107,10 +107,9 @@ class BloodViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 if (email.isNotEmpty()) {
                     auth.signInWithEmailAndPassword(email, password.ifEmpty { "password123" }).await()
+                    _isLoggedIn.value = true
+                    _selectedScreen.value = "dashboard"
                 }
-                
-                _isLoggedIn.value = true
-                _selectedScreen.value = "dashboard"
                 
                 repository.insertNotification(
                     NotificationItem(
@@ -120,9 +119,14 @@ class BloodViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 )
             } catch (e: Exception) {
-                // Fallback for demo if auth not fully setup
-                _isLoggedIn.value = true
-                _selectedScreen.value = "dashboard"
+                // Show notification error instead of just logging in
+                repository.insertNotification(
+                    NotificationItem(
+                        title = "Login Failed",
+                        message = "Error: ${e.localizedMessage}. Please check internet or Firebase setup.",
+                        type = "System"
+                    )
+                )
             }
         }
     }
@@ -149,24 +153,31 @@ class BloodViewModel(application: Application) : AndroidViewModel(application) {
                     lastDonationDate = "Never",
                     donationCount = 0,
                     isAvailable = true,
-                    points = 100, // Starting points
+                    points = 100,
                     userType = "Donor"
                 )
                 repository.insertOrUpdateProfile(profile)
                 repository.saveProfileToFirestore(profile)
+                
+                // Only log in if everything above succeeds
                 _isLoggedIn.value = true
                 _selectedScreen.value = "dashboard"
 
                 repository.insertNotification(
                     NotificationItem(
                         title = "Account Created",
-                        message = "Welcome to BloodConnect, $name! 100 reward points granted.",
+                        message = "Welcome to BloodConnect, $name!",
                         type = "Reward"
                     )
                 )
             } catch (e: Exception) {
-                _isLoggedIn.value = true
-                _selectedScreen.value = "dashboard"
+                repository.insertNotification(
+                    NotificationItem(
+                        title = "Registration Error",
+                        message = "Could not register: ${e.localizedMessage}",
+                        type = "Emergency"
+                    )
+                )
             }
         }
     }
