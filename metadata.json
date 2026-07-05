@@ -1,0 +1,6 @@
+{
+  "name": "BloodConnect",
+  "description": "A premium, production-ready blood donation and emergency matching platform featuring secure accounts, map views, local history, and AI assistance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
