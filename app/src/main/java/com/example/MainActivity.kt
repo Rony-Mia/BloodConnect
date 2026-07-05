@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 var showUpdateDialog by remember { mutableStateOf(false) }
                 var updateUrl by remember { mutableStateOf("") }
-                val currentVersion = 105 // This matches versionCode in build.gradle
+                val currentVersion = 106 // This matches versionCode in build.gradle
 
                 LaunchedEffect(Unit) {
                     try {
