@@ -1,5 +1,7 @@
 package com.example
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,6 +35,10 @@ import com.example.ui.components.PremiumButton
 import com.example.ui.components.PremiumGlassCard
 import com.example.ui.screens.*
 import com.example.ui.theme.BloodConnectTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.URL
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,6 +49,52 @@ class MainActivity : ComponentActivity() {
                 val viewModel: BloodViewModel = viewModel()
                 val isLoggedIn by viewModel.isLoggedIn.collectAsState()
                 val selectedScreen by viewModel.selectedScreen.collectAsState()
+
+                // Update Check Logic
+                val context = LocalContext.current
+                var showUpdateDialog by remember { mutableStateOf(false) }
+                var updateUrl by remember { mutableStateOf("") }
+                val currentVersion = 1 // matching versionCode in build.gradle
+
+                LaunchedEffect(Unit) {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val response = URL("https://api.github.com/repos/Rony-Mia/BloodConnect/releases/latest").readText()
+                            val json = JSONObject(response)
+                            val latestTagName = json.getString("tag_name")
+                            // Assuming tags are like v1, v2 or v1.0, v2.0
+                            val latestVersion = latestTagName.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
+                            if (latestVersion > currentVersion) {
+                                updateUrl = json.getString("html_url")
+                                showUpdateDialog = true
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+
+                if (showUpdateDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showUpdateDialog = false },
+                        title = { Text("Update Available") },
+                        text = { Text("A new version of BloodConnect is available. Please download and install the update.") },
+                        confirmButton = {
+                            Button(onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(updateUrl))
+                                context.startActivity(intent)
+                                showUpdateDialog = false
+                            }) {
+                                Text("Download")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showUpdateDialog = false }) {
+                                Text("Later")
+                            }
+                        }
+                    )
+                }
 
                 if (!isLoggedIn) {
                     LoginScreen(viewModel = viewModel)
