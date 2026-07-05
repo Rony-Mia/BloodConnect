@@ -229,6 +229,7 @@ fun LoginScreen(viewModel: BloodViewModel) {
                                 } else {
                                     viewModel.login(
                                         email = "ronymia2021@gmail.com",
+                                        password = "",
                                         phone = loginPhone.ifEmpty { "+880 1712-345678" },
                                         method = "Phone OTP verification"
                                     )
@@ -444,6 +445,7 @@ fun LoginScreen(viewModel: BloodViewModel) {
                             showBiometricModal = false
                             viewModel.login(
                                 email = "ronymia2021@gmail.com",
+                                password = "",
                                 phone = "",
                                 method = "Biometric validation (Fingerprint/Face)"
                             )
