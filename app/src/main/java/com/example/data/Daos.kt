@@ -50,6 +50,9 @@ interface RequestDao {
     @Query("UPDATE blood_requests SET status = :status WHERE id = :id")
     suspend fun updateRequestStatus(id: Int, status: String)
 
+    @Query("DELETE FROM blood_requests")
+    suspend fun deleteAllRequests()
+
     @Delete
     suspend fun deleteRequest(request: BloodRequest)
 }
@@ -65,6 +68,9 @@ interface StockDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllStocks(stocks: List<BloodStock>)
 
+    @Query("DELETE FROM blood_stock")
+    suspend fun deleteAllStocks()
+
     @Query("UPDATE blood_stock SET unitsAvailable = :units, lastUpdated = :lastUpdated WHERE id = :id")
     suspend fun updateStockUnits(id: Int, units: Int, lastUpdated: Long = System.currentTimeMillis())
 }
@@ -79,6 +85,9 @@ interface EventDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllEvents(events: List<CampaignEvent>)
+
+    @Query("DELETE FROM campaign_events")
+    suspend fun deleteAllEvents()
 
     @Query("UPDATE campaign_events SET isRegistered = :registered, registeredCount = registeredCount + :diff WHERE id = :id")
     suspend fun setEventRegistration(id: Int, registered: Boolean, diff: Int)
@@ -112,6 +121,9 @@ interface NotificationDao {
 
     @Query("UPDATE notifications SET isRead = 1")
     suspend fun markAllAsRead()
+
+    @Query("DELETE FROM notifications")
+    suspend fun deleteAllNotifications()
 
     @Query("DELETE FROM notifications WHERE id = :id")
     suspend fun deleteNotification(id: Int)

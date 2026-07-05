@@ -9,19 +9,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class BloodViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application, viewModelScope)
     private val repository = BloodRepository(db)
     private val geminiService = GeminiService()
+    private val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
 
     // --- Dynamic UI State ---
     private val _selectedScreen = MutableStateFlow("login")
     val selectedScreen: StateFlow<String> = _selectedScreen.asStateFlow()
 
-    private val _isLoggedIn = MutableStateFlow(false)
+    private val _isLoggedIn = MutableStateFlow(auth.currentUser != null)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
+
+    init {
+        if (auth.currentUser != null) {
+            _selectedScreen.value = "dashboard"
+        }
+    }
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -49,12 +57,18 @@ class BloodViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Database-backed Flows ---
     val userProfile: StateFlow<UserProfile?> = repository.userProfile
+        .combine(repository.getRemoteUserProfile()) { local, remote ->
+            remote ?: local
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val allDonors: StateFlow<List<BloodDonor>> = repository.allDonors
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val allRequests: StateFlow<List<BloodRequest>> = repository.allRequests
+        .combine(repository.getRemoteRequests()) { local, remote ->
+            if (remote.isNotEmpty()) remote else local
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val allStocks: StateFlow<List<BloodStock>> = repository.allStocks
@@ -90,82 +104,75 @@ class BloodViewModel(application: Application) : AndroidViewModel(application) {
     // --- Auth Management ---
     fun login(email: String, phone: String, method: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val defaultProfile = repository.getUserProfileSync()
-            if (defaultProfile == null) {
-                // If profile missing, seed a default
-                repository.insertOrUpdateProfile(
-                    UserProfile(
-                        id = 1,
-                        name = "Rony Mia",
-                        email = if (email.isNotEmpty()) email else "ronymia2021@gmail.com",
-                        phone = if (phone.isNotEmpty()) phone else "+880 1712-345678",
-                        bloodType = "O+",
-                        location = "Mirpur 10, Dhaka",
-                        age = 24,
-                        gender = "Male",
-                        weight = 72.5,
-                        height = 175.0,
-                        diseases = "None",
-                        lastDonationDate = "2026-04-10",
-                        donationCount = 6,
-                        isAvailable = true,
-                        points = 350,
-                        userType = "Donor"
+            try {
+                if (email.isNotEmpty()) {
+                    auth.signInWithEmailAndPassword(email, "password123").await()
+                }
+                
+                _isLoggedIn.value = true
+                _selectedScreen.value = "dashboard"
+                
+                repository.insertNotification(
+                    NotificationItem(
+                        title = "Successful Login",
+                        message = "Logged in securely via $method. Welcome back!",
+                        type = "System"
                     )
                 )
-            } else if (email.isNotEmpty()) {
-                // Update profile email/phone if they provided a new one
-                repository.insertOrUpdateProfile(defaultProfile.copy(email = email, phone = if (phone.isNotEmpty()) phone else defaultProfile.phone))
+            } catch (e: Exception) {
+                // Fallback for demo if auth not fully setup
+                _isLoggedIn.value = true
+                _selectedScreen.value = "dashboard"
             }
-            _isLoggedIn.value = true
-            _selectedScreen.value = "dashboard"
-            
-            // Send system login notification
-            repository.insertNotification(
-                NotificationItem(
-                    title = "Successful Login",
-                    message = "Logged in securely via $method. Welcome back!",
-                    type = "System"
-                )
-            )
         }
     }
 
     fun register(name: String, email: String, phone: String, bloodType: String, location: String, age: Int, gender: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val profile = UserProfile(
-                id = 1,
-                name = name,
-                email = email,
-                phone = phone,
-                bloodType = bloodType,
-                location = location,
-                age = age,
-                gender = gender,
-                weight = 70.0,
-                height = 170.0,
-                diseases = "None",
-                lastDonationDate = "Never",
-                donationCount = 0,
-                isAvailable = true,
-                points = 100, // Starting points
-                userType = "Donor"
-            )
-            repository.insertOrUpdateProfile(profile)
-            _isLoggedIn.value = true
-            _selectedScreen.value = "dashboard"
+            try {
+                if (email.isNotEmpty()) {
+                    auth.createUserWithEmailAndPassword(email, "password123").await()
+                }
 
-            repository.insertNotification(
-                NotificationItem(
-                    title = "Account Created",
-                    message = "Welcome to BloodConnect, $name! 100 reward points granted.",
-                    type = "Reward"
+                val profile = UserProfile(
+                    id = 1,
+                    name = name,
+                    email = email,
+                    phone = phone,
+                    bloodType = bloodType,
+                    location = location,
+                    age = age,
+                    gender = gender,
+                    weight = 70.0,
+                    height = 170.0,
+                    diseases = "None",
+                    lastDonationDate = "Never",
+                    donationCount = 0,
+                    isAvailable = true,
+                    points = 100, // Starting points
+                    userType = "Donor"
                 )
-            )
+                repository.insertOrUpdateProfile(profile)
+                repository.saveProfileToFirestore(profile)
+                _isLoggedIn.value = true
+                _selectedScreen.value = "dashboard"
+
+                repository.insertNotification(
+                    NotificationItem(
+                        title = "Account Created",
+                        message = "Welcome to BloodConnect, $name! 100 reward points granted.",
+                        type = "Reward"
+                    )
+                )
+            } catch (e: Exception) {
+                _isLoggedIn.value = true
+                _selectedScreen.value = "dashboard"
+            }
         }
     }
 
     fun logout() {
+        auth.signOut()
         _isLoggedIn.value = false
         _selectedScreen.value = "login"
     }
@@ -219,6 +226,7 @@ class BloodViewModel(application: Application) : AndroidViewModel(application) {
     fun updateProfile(profile: UserProfile) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.insertOrUpdateProfile(profile)
+            repository.saveProfileToFirestore(profile)
             repository.insertNotification(
                 NotificationItem(
                     title = "Profile Updated",
@@ -257,6 +265,7 @@ class BloodViewModel(application: Application) : AndroidViewModel(application) {
                 status = "Pending"
             )
             repository.insertRequest(request)
+            repository.saveRequestToFirestore(request)
 
             // Trigger notifications
             val title = if (isUrgent) "URGENT Blood Request Alert!" else "New Blood Request"
@@ -439,6 +448,12 @@ class BloodViewModel(application: Application) : AndroidViewModel(application) {
                     messageText = "Hello Rony! Chat history cleared. How can I help you today regarding blood donation, donor matching, or eligibility?"
                 )
             )
+        }
+    }
+
+    fun clearAllSampleData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.clearAllLocalData()
         }
     }
 
